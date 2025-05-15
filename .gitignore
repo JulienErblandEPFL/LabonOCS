@@ -1,1 +1,2 @@
-*.pyc
+attacks/__pycache__
+setup/__pycache__
