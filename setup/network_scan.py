@@ -1,6 +1,5 @@
 from scapy.all import ARP, Ether, srp
 
-
 #Not sure yet if it works
 def scan_network(ip_range, iface=None):
     print(f"Scanning {ip_range}...")
