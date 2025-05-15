@@ -20,3 +20,4 @@ def start_spoofing(victim_ip, victim_mac, gateway_ip, gateway_mac, interval=2):
     except KeyboardInterrupt:
         print("\nStopping... ")
         #Maybe need more things to do 
+        #Restoring the ARP maybe
