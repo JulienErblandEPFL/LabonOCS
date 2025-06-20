@@ -22,8 +22,8 @@ This project is part of the 2IC80 Lab on Offensive Computer Security. It provide
   - `scapy==2.2.0`
   
 Install dependencies:
-```bash
-pip install scapy==2.2.0
+    ```bash
+    pip install scapy==2.2.0
 
 ## System Configuration
 
@@ -36,8 +36,8 @@ Before running the tool, you must configure your system for packet forwarding an
 IP forwarding allows your machine to forward packets between interfaces, which is essential for any man-in-the-middle (MITM) attack.
 
 #### Temporary (until reboot):
-```bash
-echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
+    ```bash
+    echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 
 ### Permanent Activation of IP Forwarding
 
