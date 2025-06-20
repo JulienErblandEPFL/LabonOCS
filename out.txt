@@ -1,5 +1,1 @@
-WARNING: No route found for IPv6 destination :: (no default route?)
-Traceback (most recent call last):
-  File "whole_tool.py", line 5, in <module>
-    from netaddr import *
-ImportError: No module named netaddr
+4237	11801.322144769	192.168.56.101	192.168.56.255	NBNS	92	Name query NB GOOGLE.COM<00>
