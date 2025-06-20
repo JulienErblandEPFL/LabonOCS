@@ -54,6 +54,5 @@ To ensure IP forwarding remains enabled after a reboot, you must modify the syst
 By default, your system may respond with ICMP "port unreachable" messages when it receives traffic on closed ports, which could interfere with packet interception during spoofing attacks.
 
 To temporarily disable these responses, run:
-
     ```bash
     sudo iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP
