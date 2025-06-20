@@ -31,7 +31,7 @@ Before running the tool, you must configure your system for packet forwarding an
 
 ---
 
-### 1. Enable IP Forwarding
+### Enable IP Forwarding
 
 IP forwarding allows your machine to forward packets between interfaces, which is essential for any man-in-the-middle (MITM) attack.
 
@@ -59,5 +59,5 @@ By default, your system may respond with ICMP "port unreachable" messages when i
 
 To temporarily disable these responses, run:
 
-```bash
-sudo iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP
+    ```bash
+    sudo iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP
