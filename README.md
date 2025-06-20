@@ -20,10 +20,6 @@ This project is part of the 2IC80 Lab on Offensive Computer Security. It provide
 - Linux OS with root privileges
 - **Dependencies**:
   - `scapy==2.2.0`
-  
-Install dependencies:
-    ```bash
-    pip install scapy==2.2.0
 
 ## System Configuration
 
